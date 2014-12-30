@@ -9,7 +9,7 @@
 
 int main(int argc, char *argv[])
 {
-	char srcFileName[] = "tif/9.tif";
+	char srcFileName[] = "tif/4.tif";
 	char dstFileName[] = "tif/GDALoutput.tif";
 
 	float *tifPixelMatrix = NULL;
