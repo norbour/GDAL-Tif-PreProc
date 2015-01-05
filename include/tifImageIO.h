@@ -9,10 +9,15 @@
 #define _TIFFIMAGEIO_H_
 
 /*
- * Read the whole tiff pixel value into an array.
+ * Read pixel value of tiff file into an array.
  */
 extern void readTiffImageToMatrix(const char srcFileName[], int bandId, float **tiffMatrix, 
 	                              int *tiffWidth, int *tiffLength);
+
+/*
+ * Read pixel value of tiff data-set into an array.
+ */
+extern void readTifDataSetToMatrix(GDALDatasetH *srcTifDataSet, int bandId, float **tifPixelMatrix);
 
 /*
  * Create a tif file using the config info of a source tif file 

@@ -11,8 +11,8 @@
 /*
  * Adjust a GeoTiff to a template GeoTiff image and yield an output tiff file.
  */
-extern void tifAdjust(GDALDatasetH *templTifDataSet, 
-	                  GDALDatasetH *srcTifDataSet, 
-	                  GDALDatasetH *outputTifDataSet);
+extern void tifAdjust(const char templateTifFile[], 
+	                  const char srcTifFile[],
+			          const char outputTifFile[]);
 
 #endif

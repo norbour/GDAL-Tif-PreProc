@@ -19,7 +19,7 @@
 #include "../include/tiffImageIO.h"
 
 /*
- * Read the whole tiff pixel value into an array.
+ * Read pixel value of tiff file into an array.
  */
 void readTiffImageToMatrix(const char srcFileName[], int bandId, float **tifPixelMatrix, 
                            int *tifWidth, int *tifLength) 
@@ -46,6 +46,26 @@ void readTiffImageToMatrix(const char srcFileName[], int bandId, float **tifPixe
                       0, 0 );
 
         GDALClose(poDataset);
+    }
+}
+
+/*
+ * Read pixel value of tiff data-set into an array.
+ */
+void readTifDataSetToMatrix(GDALDatasetH *srcTifDataSet, int bandId, float **tifPixelMatrix)
+{
+    if ( srcTifDataSet != NULL )
+    {
+        GDALRasterBandH hBand;
+        hBand = GDALGetRasterBand( srcTifDataSet, bandId );
+
+        int   nXSize = GDALGetRasterXSize(srcTifDataSet);
+        int   nYSize = GDALGetRasterYSize(srcTifDataSet);
+
+        *tifPixelMatrix = (float *) CPLMalloc(sizeof(float) * nXSize * nYSize);
+        GDALRasterIO( hBand, GF_Read, 0, 0, nXSize, nYSize, 
+                      *tifPixelMatrix, nXSize, nYSize, GDT_Float32, 
+                      0, 0 );
     }
 }
 
@@ -102,6 +122,8 @@ void showGeoTiffInfo(char srcFileName[])
     if ( poDataset != NULL )
     {
         printf("========================GeoTiff Info========================= \n");
+        printf("Tiff File: %s\n", srcFileName);
+
         printf("RasterXSize: %d\n", GDALGetRasterXSize(poDataset));
 
         printf("RasterYSize: %d\n", GDALGetRasterYSize(poDataset));
