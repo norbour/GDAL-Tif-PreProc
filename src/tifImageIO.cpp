@@ -70,6 +70,50 @@ void readTifDataSetToMatrix(GDALDatasetH *srcTifDataSet, int bandId, float **tif
 }
 
 /*
+ * Copy raster statistics values.
+ */
+void copyRasterStatistics(const char dstTifFile[], const char srcTifFile[], 
+                          int dstBandId, int srcBandId,
+                          int bApproxOK)
+{
+    double pdfMin, pdfMax, pdfMean, pdfStdDev;
+
+    GDALDatasetH hDstDS = GDALOpen( dstTifFile, GA_Update );
+    GDALDatasetH hSrcDS = GDALOpen( srcTifFile, GA_ReadOnly );
+
+    if (hDstDS != NULL && hSrcDS != NULL) 
+    {
+        GDALRasterBandH dstBand = GDALGetRasterBand( hDstDS, dstBandId );
+        GDALRasterBandH srcBand = GDALGetRasterBand( hSrcDS, srcBandId );
+
+        if (srcBand != NULL && dstBand != NULL)
+        {
+            GDALComputeRasterStatistics(srcBand, 
+                bApproxOK,
+                &pdfMin,
+                &pdfMax,
+                &pdfMean,
+                &pdfStdDev,
+                NULL, NULL);
+            GDALSetRasterStatistics(dstBand,
+                pdfMin,
+                pdfMax,
+                pdfMean,
+                pdfStdDev);
+        } else {
+            printf("Copy raster statistics failed! \n");
+            return;
+        }
+
+        GDALClose(hSrcDS);
+        GDALClose(hDstDS);
+    } else {
+        printf("Copy raster statistics failed! \n");
+        return;
+    }
+}
+
+/*
  * Create a tif file using the config info of a source tif file 
  * and write pixel value matrix to it.
  */
@@ -83,9 +127,7 @@ void writeTiffImageRefSrc(const char dstFileName[], const char srcFileName[],
 
         if ( hSrcDS != NULL ) {
             GDALDatasetH hDstDS = GDALCreateCopy( hDriver, dstFileName, hSrcDS, FALSE, 
-                NULL, NULL, NULL );
-
-            GDALClose(hSrcDS);
+                                                  NULL, NULL, NULL );
 
             if( hDstDS == NULL ) {
                 GDALClose( hDstDS );
@@ -93,16 +135,16 @@ void writeTiffImageRefSrc(const char dstFileName[], const char srcFileName[],
                 return;
             }
 
-            int   nXSize = GDALGetRasterXSize(hDstDS);
-            int   nYSize = GDALGetRasterYSize(hDstDS);
+            int   nXSize = GDALGetRasterXSize(hSrcDS);
+            int   nYSize = GDALGetRasterYSize(hSrcDS);
 
-            GDALRasterBandH hBand;
-            hBand = GDALGetRasterBand( hDstDS, bandId );
+            GDALRasterBandH dstBand = GDALGetRasterBand( hDstDS, bandId );
 
-            GDALRasterIO( hBand, GF_Write, 0, 0, nXSize, nYSize, 
+            GDALRasterIO( dstBand, GF_Write, 0, 0, nXSize, nYSize, 
                           pixelMatrixBuf, nXSize, nYSize, GDT_Float32, 
                           0, 0 );
 
+            GDALClose(hSrcDS);
             GDALClose(hDstDS);
         }
 }

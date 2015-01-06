@@ -1,5 +1,6 @@
 #include <stdio.h>  
 #include <stdlib.h>
+#include <string.h>
 
 #include <gdal.h>
 #include <gdal_priv.h>
@@ -48,12 +49,65 @@ void ImageRowCol2Projection(double *adfGeoTransform, int iCol, int iRow,
 }
 
 /*
+ * <Core Function>
  * Adjust a GeoTiff to a template GeoTiff image and yield an output tiff file.
  */
 void tifAdjustCore(GDALDatasetH *templateTifDataSet, 
-    GDALDatasetH *srcTifDataSet,
-    float        **adjustedPixelMatrix);
+                   GDALDatasetH *srcTifDataSet,
+                   float        **adjustedPixelMatrix)
+{
+    double templTifGeoTransform[6], srcTifGeoTransform[6];
+    int srcSubOriginCol = 0, srcSubOriginRow = 0;
 
+    GDALGetGeoTransform( templateTifDataSet, templTifGeoTransform );
+    GDALGetGeoTransform( srcTifDataSet,      srcTifGeoTransform );
+
+    Projection2ImageRowCol(srcTifGeoTransform, templTifGeoTransform[0], templTifGeoTransform[3],
+        &srcSubOriginCol, &srcSubOriginRow);
+
+    int templateTifWidth  = GDALGetRasterXSize(templateTifDataSet);
+    int templateTifHeight = GDALGetRasterYSize(templateTifDataSet);
+
+    *adjustedPixelMatrix = (float*)malloc(sizeof(float) * templateTifWidth * templateTifHeight);
+
+    int srcTifWidth  = GDALGetRasterXSize(srcTifDataSet); 
+    int srcTifHeight = GDALGetRasterYSize(srcTifDataSet);
+    float *srcPixelMatrix = NULL;
+
+    readTifDataSetToMatrix(srcTifDataSet, 1, &srcPixelMatrix);
+
+    int upLeftX      = MAX(0, srcSubOriginCol);
+    int upLeftY      = MAX(0, srcSubOriginRow);
+    int buttomRightX = MIN(srcTifWidth - 1, srcSubOriginCol + templateTifWidth - 1);
+    int buttomRightY = MIN(srcTifHeight - 1, srcSubOriginRow + templateTifHeight - 1);
+
+    for (int j = srcSubOriginRow; j < templateTifHeight + srcSubOriginRow; j++)
+    {
+        for (int i = srcSubOriginCol; i < templateTifWidth + srcSubOriginCol; i++) 
+        {
+            if ( j >= upLeftY && j <= buttomRightY && i >= upLeftX && i <= buttomRightX)
+            {
+                /**(*adjustedPixelMatrix + (i - srcSubOriginCol + (j - srcSubOriginRow) * templateTifWidth))
+                = srcPixelMatrix[i + j * srcTifWidth];*/
+                memcpy((*adjustedPixelMatrix + (i - srcSubOriginCol + (j - srcSubOriginRow) * templateTifWidth)),
+                       srcPixelMatrix + (i + j * srcTifWidth), sizeof(float));
+            }
+            else
+            {
+                /**(*adjustedPixelMatrix + (i - srcSubOriginCol + (j - srcSubOriginRow) * templateTifWidth))
+                = 0xE0000000;*/
+                // The pixel value of outside-zone place was supposed to be 0xE0000000.
+                memcpy((*adjustedPixelMatrix + (i - srcSubOriginCol + (j - srcSubOriginRow) * templateTifWidth)), 
+                       srcPixelMatrix, sizeof(float)); 
+            }
+        }
+    }
+}
+
+/*
+ * <Interface>
+ * Adjust a GeoTiff to a template GeoTiff image and yield an output tiff file.
+ */
 void tifAdjust(const char templateTifFile[], 
                const char srcTifFile[],
                const char outputTifFile[])
@@ -74,50 +128,9 @@ void tifAdjust(const char templateTifFile[],
 
         GDALClose(templateTifDataSet);
         GDALClose(srcTifDataSet);
-    }
-}
 
-void tifAdjustCore(GDALDatasetH *templateTifDataSet, 
-                   GDALDatasetH *srcTifDataSet,
-                   float        **adjustedPixelMatrix)
-{
-    double templTifGeoTransform[6], srcTifGeoTransform[6];
-    int srcSubOriginCol = 0, srcSubOriginRow = 0;
-
-    GDALGetGeoTransform( templateTifDataSet, templTifGeoTransform );
-    GDALGetGeoTransform( srcTifDataSet,      srcTifGeoTransform );
-
-    Projection2ImageRowCol(srcTifGeoTransform, templTifGeoTransform[0], templTifGeoTransform[3],
-        &srcSubOriginCol, &srcSubOriginRow);
-
-    int templateTifWidth  = GDALGetRasterXSize(templateTifDataSet);
-    int templateTifHeight = GDALGetRasterYSize(templateTifDataSet);
-    *adjustedPixelMatrix = (float*)malloc(sizeof(float) * templateTifWidth * templateTifHeight);
-
-    int srcTifWidth  = GDALGetRasterXSize(srcTifDataSet); 
-    int srcTifHeight = GDALGetRasterYSize(srcTifDataSet);
-    float *srcPixelMatrix = NULL;
-    readTifDataSetToMatrix(srcTifDataSet, 1, &srcPixelMatrix);
-
-    int upLeftX      = MAX(0, srcSubOriginCol);
-    int upLeftY      = MAX(0, srcSubOriginRow);
-    int buttomRightX = MIN(srcTifWidth - 1, srcSubOriginCol + templateTifWidth - 1);
-    int buttomRightY = MIN(srcTifHeight - 1, srcSubOriginRow + templateTifHeight - 1);
-
-    for (int j = srcSubOriginRow; j < templateTifHeight + srcSubOriginRow; j++)
-    {
-        for (int i = srcSubOriginCol; i < templateTifWidth + srcSubOriginCol; i++) 
-        {
-            if ( j >= upLeftY && j <= buttomRightY && i >= upLeftX && i <= buttomRightX)
-            {
-                *adjustedPixelMatrix[i - srcSubOriginCol + (j - srcSubOriginRow) * templateTifHeight]
-                = srcPixelMatrix[i + j * srcTifHeight];
-            }
-            else
-            {
-                *adjustedPixelMatrix[i - srcSubOriginCol + (j - srcSubOriginRow) * templateTifHeight]
-                = 0xE0000000;
-            }
-        }
+        /* CreateCopy method in writeTiffImageRefSrc() copy the statistics value (mainly Min/Max pixel sample value) 
+           from template tiff into adjusted tiff, we need to repair this. */
+        copyRasterStatistics(outputTifFile, srcTifFile, 1, 1, 1);
     }
 }

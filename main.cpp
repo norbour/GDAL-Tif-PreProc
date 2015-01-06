@@ -12,19 +12,21 @@ int main(int argc, char *argv[])
 {
 	char templateFileName[] = "../../../Tiff/4.tif";
 	char srcFileName[]      = "../../../Tiff/11.tif";
-	char outputFileName[]   = "../../../Tiff/GDALoutput.tif";
+	char outputFileName[]   = "../../../Tiff/GDAL_Adjust_Output.tif";
 
 	float *tifPixelMatrix = NULL;
+	float *tifPixelMatrix2 = NULL;
 	int tifWidth, tifLength;
+
+	tifAdjust(templateFileName, srcFileName, outputFileName);
 
 	showGeoTiffInfo(templateFileName);
 	showGeoTiffInfo(srcFileName);
+	showGeoTiffInfo(outputFileName);
 
-	readTiffImageToMatrix(srcFileName, 1, &tifPixelMatrix, &tifWidth, &tifLength);
+	//readTiffImageToMatrix(outputFileName, 1, &tifPixelMatrix, &tifWidth, &tifLength);
 
-    printf("%X \n", tifPixelMatrix[tifWidth * tifLength - 1]);
-
-	tifAdjust(templateFileName, srcFileName, outputFileName);
+ //   printf("%X \n", tifPixelMatrix[tifWidth * tifLength - 1]);
 
 	/*writeTiffImageRefSrc(outputFileName, srcFileName, 1, tifPixelMatrix);*/
 

@@ -27,6 +27,13 @@ extern void writeTiffImageRefSrc(const char dstFileName[], const char srcFileNam
 	                             int bandid, float *pixelMatrixBuf);
 
 /*
+ * Copy raster statistics values.
+ */
+extern void copyRasterStatistics(const char dstTifFile[], const char srcTifFile[], 
+	                             int dstBandId, int srcBandId,
+						         int bApproxOK);
+
+/*
  * Print GeoTiff info.
  */
 extern void showGeoTiffInfo(char srcFileName[]);    
