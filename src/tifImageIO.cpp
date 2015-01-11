@@ -21,8 +21,12 @@
 /*
  * Read pixel value of tiff file into an array.
  */
-void readTiffImageToMatrix(const char srcFileName[], int bandId, float **tifPixelMatrix, 
-                           int *tifWidth, int *tifLength) 
+void readTiffImageToMatrix( const char srcFileName[], 
+                            int        bandId, 
+                            float      **tifPixelMatrix, 
+                            int        *tifWidth, 
+                            int        *tifLength,
+                            double     *rasterMinMax ) 
 {
     GDALDatasetH *poDataset;
 
@@ -45,6 +49,8 @@ void readTiffImageToMatrix(const char srcFileName[], int bandId, float **tifPixe
                       *tifPixelMatrix, nXSize, nYSize, GDT_Float32, 
                       0, 0 );
 
+        GDALComputeRasterMinMax( hBand, bandId, rasterMinMax );
+
         GDALClose(poDataset);
     }
 }
@@ -52,7 +58,9 @@ void readTiffImageToMatrix(const char srcFileName[], int bandId, float **tifPixe
 /*
  * Read pixel value of tiff data-set into an array.
  */
-void readTifDataSetToMatrix(GDALDatasetH *srcTifDataSet, int bandId, float **tifPixelMatrix)
+void readTifDataSetToMatrix( GDALDatasetH *srcTifDataSet, 
+                             int bandId, 
+                             float **tifPixelMatrix )
 {
     if ( srcTifDataSet != NULL )
     {
@@ -89,26 +97,77 @@ void copyRasterStatistics(const char dstTifFile[], const char srcTifFile[],
         if (srcBand != NULL && dstBand != NULL)
         {
             GDALComputeRasterStatistics(srcBand, 
-                bApproxOK,
-                &pdfMin,
-                &pdfMax,
-                &pdfMean,
-                &pdfStdDev,
-                NULL, NULL);
+                                        bApproxOK,
+                                        &pdfMin,
+                                        &pdfMax,
+                                        &pdfMean,
+                                        &pdfStdDev,
+                                        NULL, NULL);
             GDALSetRasterStatistics(dstBand,
-                pdfMin,
-                pdfMax,
-                pdfMean,
-                pdfStdDev);
-        } else {
+                                    pdfMin,
+                                    pdfMax,
+                                    pdfMean,
+                                    pdfStdDev);
+        } 
+        else 
+        {
             printf("Copy raster statistics failed! \n");
             return;
         }
 
         GDALClose(hSrcDS);
         GDALClose(hDstDS);
-    } else {
+    } 
+    else 
+    {
         printf("Copy raster statistics failed! \n");
+        return;
+    }
+}
+
+/**
+ * Alter raster pixel min & max values.
+ */
+void alterRasterMinMax( const char   tifFile[], 
+                        int          bandId,
+                        const double newRasterMinMax[2] )
+{
+    double pdfMin, pdfMax, pdfMean, pdfStdDev;
+
+    GDALDatasetH hSrcDS = GDALOpen( tifFile, GA_Update );
+
+    if ( hSrcDS != NULL )
+    {
+        GDALRasterBandH hBand = GDALGetRasterBand( hSrcDS, bandId );
+
+        if ( hBand != NULL ) 
+        {
+            GDALComputeRasterStatistics( hBand, 
+                                         0,
+                                         &pdfMin,
+                                         &pdfMax,
+                                         &pdfMean,
+                                         &pdfStdDev,
+                                         NULL, NULL );
+            GDALSetRasterStatistics( hBand,
+                                     newRasterMinMax[0],
+                                     newRasterMinMax[1],
+                                     pdfMean,
+                                     pdfStdDev );
+        }
+        else 
+        {
+            printf("Alter raster min & max pixel value failed! \n");
+            printf("Raster band is NULL! \n");
+            return;
+        }
+
+        GDALClose(hSrcDS);
+    }
+    else 
+    {
+        printf("Alter raster min & max pixel value failed! \n");
+        printf("Raster dataset is NULL! \n");
         return;
     }
 }
@@ -117,8 +176,10 @@ void copyRasterStatistics(const char dstTifFile[], const char srcTifFile[],
  * Create a tif file using the config info of a source tif file 
  * and write pixel value matrix to it.
  */
-void writeTiffImageRefSrc(const char dstFileName[], const char srcFileName[], 
-                          int bandId, float *pixelMatrixBuf) 
+void writeTiffImageRefSrc( const char dstFileName[], 
+                           const char srcFileName[], 
+                           int bandId, 
+                           float *pixelMatrixBuf ) 
 {
         const char *pszFormat = "GTiff";
         GDALDriverH hDriver = GDALGetDriverByName( pszFormat );
@@ -152,7 +213,7 @@ void writeTiffImageRefSrc(const char dstFileName[], const char srcFileName[],
 /*
  * Print GeoTiff info.
  */
-void showGeoTiffInfo(char srcFileName[]) 
+void showGeoTiffInfo( const char srcFileName[] ) 
 {
     GDALDatasetH *poDataset;
     double        adfGeoTransform[6];
