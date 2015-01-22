@@ -13,14 +13,27 @@
 #include <cpl_conv.h>
 
 /*
+ * Get GeoTiff min & max raster pixel value.
+ */   
+extern void getTiffMinMax( const char srcFileName[],
+	                       int        bandId,
+				           double     *rasterMinMax,
+				           int        bApproxOK );
+
+/*
+ * Get GeoTiff raster width & length.
+ */
+extern void getTiffWidthLength( const char srcFileName[],
+	                            int        bandId,
+						        int        *tifWidth,
+						        int        *tifLength );
+
+/*
  * Read pixel value of tiff file into an array.
  */
 extern void readTiffImageToMatrix( const char srcFileName[], 
 	                               int        bandId, 
-						           float      **tifPixelMatrix, 
-	                               int        *tifWidth, 
-								   int        *tifLength,
-						           double     *rasterMinMax ); 
+						           float      **tifPixelMatrix ); 
 
 /*
  * Read pixel value of tiff data-set into an array.

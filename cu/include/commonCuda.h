@@ -1,5 +1,8 @@
-#ifndef _COMMONCUDAHEADER_CUH_
-#define _COMMONCUDAHEADER_CUH_
+#ifndef _COMMCUDA_CUH_
+#define _COMMCUDA_CUH_
+
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 
 /**
  * Environment evaluation factor type (Active/Negative)
@@ -26,5 +29,17 @@ extern cudaDeviceProp* getCudaDevicesInfo();
 extern void geoTiffRasterPixelNormalization( const char    srcTifFile[],
 	                                         const char    outputTifFile[],
                                              envFactorType factorType );
+
+/**
+ * <Interface>
+ * Weighted factor GeoTiff raster pixel superposition.
+ * @param factorTifNames     ->  A list of factor GeoTiff files
+ * @param normalizedTifFile  ->  Result output file path
+ * @param factorType         ->  Evaluation factor type (Active/Negative)
+ */
+extern void geoTiffRasterPixelSuperposition( char    *factorTifNames[],
+	                                         char    *outputTifFile,
+                                             double  *factorWeightArray,
+									         int     nFactors );
 
 #endif

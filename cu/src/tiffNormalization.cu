@@ -6,7 +6,7 @@
 #include <device_launch_parameters.h>
 
 #include "../include/book.h"
-#include "../include/commonCudaHeader.h"
+#include "../include/commCuda.h"
 #include "../../include/tiffImageIO.h"
 
 /**
@@ -18,9 +18,11 @@ __global__ void normalizeActiveRasterPixel( float  *pixelMatrix,
 										    double *rasterMinMax ) 
 {
 	int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
 	while (tid < *nPixels)
 	{
-		if ( pixelMatrix[tid] - pixelMatrix[0] != 0 ) 
+		
+		if ( pixelMatrix[tid] - 0xE0000000 != 0 ) // float nullPixelValue = 0xE0000000;
 		{
 			pixelMatrix[tid] = (pixelMatrix[tid] - rasterMinMax[0]) /
 				               (rasterMinMax[1]  - rasterMinMax[0]);
@@ -86,18 +88,42 @@ void rasterPixelNormalization(float         *pixelMatrix,
 							  2 * sizeof(double),
 							  cudaMemcpyHostToDevice ) );
 
+	/******************** Preparation for CUDA execution time recording ********************/
+
+	cudaEvent_t timeStartEvent, timeEndEvent;
+
+	HANDLE_ERROR( cudaEventCreate( &timeStartEvent, 0 ) );
+	HANDLE_ERROR( cudaEventCreate( &timeEndEvent, 0 ) );
+
+	HANDLE_ERROR( cudaEventRecord( timeStartEvent, 0 ) );
+
+	/******************** ******************************************** ********************/
+
 	if ( factorType == factor_Active ) 
 	{
 		normalizeActiveRasterPixel<<<128, 128>>>( dev_pixelMatrix, 
 			                                      dev_nPixels, 
-			                                      dev_rasterMinMax);
+			                                      dev_rasterMinMax );
 	}
 	else
 	{
 		normalizeNegativeRasterPixel<<<128, 128>>>( dev_pixelMatrix, 
 			                                        dev_nPixels, 
-			                                        dev_rasterMinMax);
+			                                        dev_rasterMinMax );
 	}
+
+	/********************** Check out CUDA execution time recording ***********************/
+	HANDLE_ERROR( cudaEventRecord( timeEndEvent, 0 ) );
+	HANDLE_ERROR( cudaEventSynchronize(timeEndEvent) );
+
+	float elapsedTime = 0;
+	HANDLE_ERROR( cudaEventElapsedTime( &elapsedTime, timeStartEvent, timeEndEvent ) );
+
+	printf( "Time Consumption: %f ms. \n", elapsedTime );
+
+	HANDLE_ERROR( cudaEventDestroy( timeStartEvent ) );
+	HANDLE_ERROR( cudaEventDestroy( timeEndEvent ) );
+	/******************** ******************************************** ********************/
 
 	HANDLE_ERROR( cudaMemcpy( pixelMatrix,
 		                      dev_pixelMatrix,
@@ -105,14 +131,16 @@ void rasterPixelNormalization(float         *pixelMatrix,
 		                      cudaMemcpyDeviceToHost ) );
 
 	HANDLE_ERROR( cudaFree( dev_pixelMatrix ) );
+	HANDLE_ERROR( cudaFree( dev_nPixels ) );
+	HANDLE_ERROR( cudaFree( dev_rasterMinMax ) );
 }
 
 /**
  * <Interface>
  * Factor GeoTiff pixel normalization.
  * @param srcTifFile         ->  Source GeoTiff file path
- * @param normalizedTifFile  ->  raster width
- * @param factorType         -> evaluation factor type (Active/Negative)
+ * @param outputTifFile      ->  Result output file path
+ * @param factorType         ->  Evaluation factor type (Active/Negative)
  */
 void geoTiffRasterPixelNormalization( const char    srcTifFile[],
 	                                  const char    outputTifFile[],
@@ -123,12 +151,25 @@ void geoTiffRasterPixelNormalization( const char    srcTifFile[],
 	double *rasterMinMax;
 
 	rasterMinMax = (double*)malloc( sizeof(double) * 2 );
+	if ( rasterMinMax == NULL )
+	{
+		ERROR_INFO( "Out of memory" );
+		return;
+	}
 
 	readTiffImageToMatrix( srcTifFile, 
 		                   1, 
-						   &rasterPixels,
-		                   &tifWidth, &tifLength,
-						   rasterMinMax );
+						   &rasterPixels );
+
+	getTiffWidthLength( srcTifFile,
+		                1,
+						&tifWidth,
+						&tifLength );
+
+	getTiffMinMax( srcTifFile,
+		           1,
+				   rasterMinMax,
+				   1 );
 
 	rasterPixelNormalization( rasterPixels, 
 	                          tifWidth, 
@@ -146,4 +187,6 @@ void geoTiffRasterPixelNormalization( const char    srcTifFile[],
 	alterRasterMinMax( outputTifFile,
 		               1,
 	                   normalizedRasterMinMax );
+
+	free(rasterMinMax);
 }

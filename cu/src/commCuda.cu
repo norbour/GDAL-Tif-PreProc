@@ -5,13 +5,14 @@
 #include <device_launch_parameters.h>
 
 #include "../include/book.h"
-#include "../include/commonCudaHeader.h"
+#include "../include/commCuda.h"
 
 /*
  * Collect all the information of every CUDA device on this computer 
  * and return as cudaDeviceProp array.
  */
-cudaDeviceProp* getCudaDevicesInfo() {
+cudaDeviceProp* getCudaDevicesInfo()
+{
 	cudaDeviceProp* deviceInfos = NULL;
 	cudaDeviceProp prop;
 
@@ -27,6 +28,7 @@ cudaDeviceProp* getCudaDevicesInfo() {
 		printf( "Name: %s\n", prop.name );
 		printf( "Compute capability: %d.%d\n", prop.major, prop.minor );
 		printf( "Clock rate: %d\n", prop.clockRate );
+
 		printf( "Device copy overlap: " );
 		if (prop.deviceOverlap)
 		{
@@ -36,6 +38,7 @@ cudaDeviceProp* getCudaDevicesInfo() {
 		{
 			printf( "Disabled\n" );
 		}
+
 		printf( "Kernel execution timeout : " );
 		if (prop.kernelExecTimeoutEnabled)
 		{
@@ -70,4 +73,30 @@ cudaDeviceProp* getCudaDevicesInfo() {
 	}
 
 	return deviceInfos;
+}
+
+/*
+ * Compute time consumption of CUDA function execution.
+ */
+void timeConsumption( void (*func)() )
+{
+	cudaEvent_t timeStartEvent, timeEndEvent;
+
+	HANDLE_ERROR( cudaEventCreate( &timeStartEvent, 0 ) );
+	HANDLE_ERROR( cudaEventCreate( &timeEndEvent, 0 ) );
+
+	HANDLE_ERROR( cudaEventRecord( timeStartEvent, 0 ) );
+
+	func();
+
+	HANDLE_ERROR( cudaEventRecord( timeEndEvent, 0 ) );
+	HANDLE_ERROR( cudaEventSynchronize(timeEndEvent) );
+
+	float elapsedTime = 0;
+	HANDLE_ERROR( cudaEventElapsedTime( &elapsedTime, timeStartEvent, timeEndEvent ) );
+
+	printf( "Time Consumption: %f ms.", elapsedTime );
+
+	HANDLE_ERROR( cudaEventDestroy( timeStartEvent ) );
+	HANDLE_ERROR( cudaEventDestroy( timeEndEvent ) );
 }

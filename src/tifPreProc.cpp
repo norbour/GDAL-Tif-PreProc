@@ -62,8 +62,8 @@ void tifAdjustCore(GDALDatasetH *templateTifDataSet,
     GDALGetGeoTransform( templateTifDataSet, templTifGeoTransform );
     GDALGetGeoTransform( srcTifDataSet,      srcTifGeoTransform );
 
-    Projection2ImageRowCol(srcTifGeoTransform, templTifGeoTransform[0], templTifGeoTransform[3],
-        &srcSubOriginCol, &srcSubOriginRow);
+    Projection2ImageRowCol( srcTifGeoTransform, templTifGeoTransform[0], templTifGeoTransform[3],
+                            &srcSubOriginCol, &srcSubOriginRow );
 
     int templateTifWidth  = GDALGetRasterXSize(templateTifDataSet);
     int templateTifHeight = GDALGetRasterYSize(templateTifDataSet);
@@ -102,6 +102,8 @@ void tifAdjustCore(GDALDatasetH *templateTifDataSet,
             }
         }
     }
+
+    free(adjustedPixelMatrix);
 }
 
 /*

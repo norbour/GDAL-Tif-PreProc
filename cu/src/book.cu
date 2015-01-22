@@ -16,6 +16,16 @@
 #include <stdio.h>
 #include "../include/book.h"
 
+void ErrorInfo( const char *errInfo,
+	            const char *file,
+				int        line      )
+{
+	printf( "%s in %s at line %d\n", errInfo,
+		    file, line );
+	system("PAUSE");
+	exit( EXIT_FAILURE );
+}
+
 void HandleError( cudaError_t err,
 	const char *file,
 	int line ) {

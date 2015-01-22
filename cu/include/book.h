@@ -19,9 +19,15 @@
 
 #include <stdio.h>
 
+extern void ErrorInfo( const char *errInfo,
+	                   const char *file,
+				       int        line      );
+
+#define ERROR_INFO( err )( ErrorInfo( err, __FILE__, __LINE__ ) )
+
 extern void HandleError( cudaError_t err,
                          const char *file,
-                         int line );
+                         int line          );
 
 #define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
 

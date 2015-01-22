@@ -19,14 +19,12 @@
 #include "../include/tiffImageIO.h"
 
 /*
- * Read pixel value of tiff file into an array.
+ * Get GeoTiff raster width & length.
  */
-void readTiffImageToMatrix( const char srcFileName[], 
-                            int        bandId, 
-                            float      **tifPixelMatrix, 
-                            int        *tifWidth, 
-                            int        *tifLength,
-                            double     *rasterMinMax ) 
+void getTiffWidthLength( const char srcFileName[],
+                         int        bandId,
+                         int        *tifWidth,
+                         int        *tifLength )
 {
     GDALDatasetH *poDataset;
 
@@ -44,12 +42,72 @@ void readTiffImageToMatrix( const char srcFileName[],
         *tifWidth = nXSize;
         *tifLength = nYSize;
 
+        GDALClose(poDataset);
+    }
+    else
+    {
+        printf( "Failed to open tiff file %s \n", srcFileName );
+        system( "PAUSE" );
+        exit(1);
+    }
+}
+
+/*
+ * Get GeoTiff min & max raster pixel value.
+ */   
+void getTiffMinMax( const char srcFileName[],
+                    int        bandId,
+                    double     *rasterMinMax,
+                    int        bApproxOK )
+{
+    GDALDatasetH *poDataset;
+
+    GDALAllRegister();
+
+    poDataset = (GDALDatasetH *)GDALOpen(srcFileName, GA_ReadOnly);
+
+    if ( poDataset != NULL )
+    {
+        GDALRasterBandH hBand;
+        hBand = GDALGetRasterBand( poDataset, bandId );
+
+        GDALComputeRasterMinMax( hBand, bApproxOK, rasterMinMax );
+
+        GDALClose(poDataset);
+    }
+    else
+    {
+        printf( "Failed to open tiff file %s \n", srcFileName );
+        system( "PAUSE" );
+        exit(1);
+    }
+}
+
+/*
+ * Read pixel value of tiff file into an array.
+ */
+void readTiffImageToMatrix( const char srcFileName[], 
+                            int        bandId, 
+                            float      **tifPixelMatrix ) 
+{
+    GDALDatasetH *poDataset;
+
+    GDALAllRegister();
+
+    poDataset = (GDALDatasetH *)GDALOpen(srcFileName, GA_ReadOnly);
+
+    if ( poDataset != NULL )
+    {
+        GDALRasterBandH hBand;
+        hBand = GDALGetRasterBand( poDataset, bandId );
+
+        int   nXSize = GDALGetRasterXSize(poDataset);
+        int   nYSize = GDALGetRasterYSize(poDataset);
+
         *tifPixelMatrix = (float *) CPLMalloc(sizeof(float) * nXSize * nYSize);
         GDALRasterIO( hBand, GF_Read, 0, 0, nXSize, nYSize, 
                       *tifPixelMatrix, nXSize, nYSize, GDT_Float32, 
                       0, 0 );
-
-        GDALComputeRasterMinMax( hBand, bandId, rasterMinMax );
 
         GDALClose(poDataset);
     }
@@ -178,8 +236,8 @@ void alterRasterMinMax( const char   tifFile[],
  */
 void writeTiffImageRefSrc( const char dstFileName[], 
                            const char srcFileName[], 
-                           int bandId, 
-                           float *pixelMatrixBuf ) 
+                           int        bandId, 
+                           float      *pixelMatrixBuf ) 
 {
         const char *pszFormat = "GTiff";
         GDALDriverH hDriver = GDALGetDriverByName( pszFormat );
