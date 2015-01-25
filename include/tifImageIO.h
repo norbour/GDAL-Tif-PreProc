@@ -8,6 +8,26 @@
 #ifndef _TIFFIMAGEIO_H_
 #define _TIFFIMAGEIO_H_
 
+ #ifndef HAVE_INT8
+typedef	signed char int8;	/* NB: non-ANSI compilers may not grok */
+#endif
+typedef	unsigned char uint8;
+#ifndef HAVE_INT16
+typedef	short int16;
+#endif
+typedef	unsigned short uint16;	/* sizeof (uint16) must == 2 */
+#if SIZEOF_INT == 4
+#ifndef HAVE_INT32
+typedef	int int32;
+#endif
+typedef	unsigned int uint32;	/* sizeof (uint32) must == 4 */
+#elif SIZEOF_LONG == 4
+#ifndef HAVE_INT32
+typedef	long int32;
+#endif
+typedef	unsigned long uint32;	/* sizeof (uint32) must == 4 */
+#endif
+
 #include <gdal.h>
 #include <gdal_priv.h>
 #include <cpl_conv.h>
